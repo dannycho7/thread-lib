@@ -22,7 +22,7 @@ struct TCB {
 
 class ThreadManager {
 public:
-	static ThreadManager get() {
+	static ThreadManager& get() {
 		static ThreadManager tm;
 		return tm;
 	}
