@@ -18,15 +18,6 @@ static int ptr_mangle(int p) {
     return ret;
 }
 
-TCB* ThreadManager::getRunningTCB() { return this->TCBs[this->running_thread_id]; }
-
-void ThreadManager::finishCurrentThread() {
-	TCB* fin_tcb = this->TCBs.find(this->running_thread_id)->second;
-	delete fin_tcb;
-	this->TCBs.erase(this->running_thread_id);
-	/* call switch thread ?? */
-}
-
 void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *)) {
 	*thread = ++(this->highest_thread_id);
 	TCB* crt_tcb = new TCB(*thread);
@@ -35,12 +26,34 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 
 	crt_tcb->stack_top[STACK_SIZE - 1] = (intptr_t) arg;
 	crt_tcb->stack_top[STACK_SIZE - 2] = (intptr_t) exit_addr;
-	
+
 	crt_tcb->buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(crt_tcb->stack_top + STACK_SIZE - 2));
 	crt_tcb->buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 
 	this->TCBs[crt_tcb->thread_id] = crt_tcb;
 }
+
+[[ noreturn ]] void ThreadManager::finishCurrentThread() {
+	pthread_t curr_thread_id = this->running_thread_it->second->thread_id;
+	TCB* fin_tcb = this->TCBs.find(curr_thread_id)->second;
+	delete fin_tcb;
+	this->TCBs.erase(curr_thread_id);
+	ThreadManager::get().nextThread();
+}
+
+TCB* ThreadManager::getRunningTCB() { return this->TCBs[this->running_thread_it->second->thread_id]; }
+
+[[ noreturn ]] void ThreadManager::nextThread() {
+	if (this->TCBs.size() == 0)
+		exit(0);
+	else {
+		if (this->running_thread_it == this->TCBs.end())
+			this->running_thread_it = this->TCBs.begin();
+		else if (this->TCBs.size() > 1)
+			this->running_thread_it++;
+	}
+	longjmp(this->running_thread_it->second->buf, 1);
+} 
 
 pthread_t pthread_self() {
 	return ThreadManager::get().getRunningTCB()->thread_id;

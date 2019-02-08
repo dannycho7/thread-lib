@@ -26,21 +26,24 @@ public:
 		static ThreadManager tm;
 		return tm;
 	}
-	void finishCurrentThread();
 	void createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *));
+	[[ noreturn ]] void finishCurrentThread();
 	TCB* getRunningTCB();
+	[[ noreturn ]] void nextThread();
 private:
 	ThreadManager()
-	: running_thread_id{0}
-	, highest_thread_id{0}
-	, TCBs() {
+	: highest_thread_id{0}
+	, TCBs()
+	, running_thread_it() {
 		TCB* curr_tcb = new TCB(++highest_thread_id);
 		setjmp(curr_tcb->buf);
 		this->TCBs[curr_tcb->thread_id] = curr_tcb;
+		running_thread_it = this->TCBs.begin();
+		this->nextThread();
 	}
 
-	pthread_t running_thread_id;
 	pthread_t highest_thread_id;
 	std::map<pthread_t, TCB*> TCBs;
+	std::map<pthread_t, TCB*>::iterator running_thread_it;
 };
 #endif
