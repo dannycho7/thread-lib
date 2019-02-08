@@ -1,8 +1,11 @@
+#define INTERVAL 500
 #define JB_SP 4
 #define JB_PC 5
 
 #include <cstdint>
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/time.h>
 #include "thread_manager.h"
 
 static int ptr_mangle(int p) {
@@ -16,6 +19,32 @@ static int ptr_mangle(int p) {
     : "%eax"
     );
     return ret;
+}
+
+void alarm_handler(int signo) {
+	if (setjmp(ThreadManager::get().getRunningTCB()->buf) == 0) {
+		ThreadManager::get().nextThread();
+	}
+}
+
+void initTimer() {
+	struct itimerval it_val;
+	struct sigaction act;
+	act.sa_handler = alarm_handler;
+	act.sa_flags = SA_NODEFER;
+	if(sigaction(SIGALRM, &act, NULL) == -1) {
+		perror("Unable to catch SIGALRM");
+		exit(1);
+	}
+
+	it_val.it_value.tv_sec = INTERVAL/1000;
+	it_val.it_value.tv_usec = (INTERVAL*1000) % 1000000;
+	it_val.it_interval = it_val.it_value;
+
+	if(setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
+		perror("error calling setitimer()");
+		exit(1);
+	}
 }
 
 ThreadManager::ThreadManager()
