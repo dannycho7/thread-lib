@@ -2,6 +2,7 @@
 #define JB_SP 4
 #define JB_PC 5
 
+#include <cassert>
 #include <cstdint>
 #include <stdlib.h>
 #include <signal.h>
@@ -83,23 +84,20 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	pthread_t curr_thread_id = this->running_thread_it->second->thread_id;
 	TCB* fin_tcb = this->TCBs.find(curr_thread_id)->second;
 	delete fin_tcb;
-	this->TCBs.erase(curr_thread_id);
-	ThreadManager::get().nextThread();
+	this->running_thread_it = this->TCBs.erase(this->running_thread_it);
+	if (this->TCBs.size() == 0)
+		exit(0);
+	longjmp(this->running_thread_it->second->buf, 1);
 }
 
 TCB* ThreadManager::getRunningTCB() { return this->TCBs[this->running_thread_it->second->thread_id]; }
 
+/* Invariant is that the running_thread_it is an iterator to a valid value */
 [[ noreturn ]] void ThreadManager::nextThread() {
-	if (this->TCBs.size() == 0)
-		exit(0);
-	else if (this->TCBs.size() == 1) {
-		this->running_thread_it = this->TCBs.begin(); /* In case current thread got deleted */
-	} else {
-		if (this->running_thread_it == this->TCBs.end())
-			this->running_thread_it = this->TCBs.begin();
-		else
-			this->running_thread_it++;
-	}
+	assert(this->TCBs.size() > 0);
+	this->running_thread_it++;
+	if (this->running_thread_it == this->TCBs.end())
+		this->running_thread_it = this->TCBs.begin();
 	longjmp(this->running_thread_it->second->buf, 1);
 } 
 
