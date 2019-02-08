@@ -26,8 +26,8 @@ public:
 		static ThreadManager tm;
 		return tm;
 	}
-	void finishTCB(pthread_t id);
-	void createTCB(pthread_t* t, pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void* (*exit_addr));
+	void finishCurrentThread();
+	void createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *));
 	TCB* getRunningTCB();
 private:
 	ThreadManager()
