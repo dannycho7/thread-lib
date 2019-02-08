@@ -22,6 +22,7 @@ struct TCB {
 
 class ThreadManager {
 public:
+	~ThreadManager();
 	static ThreadManager& get() {
 		static ThreadManager tm;
 		return tm;
@@ -31,17 +32,7 @@ public:
 	TCB* getRunningTCB();
 	[[ noreturn ]] void nextThread();
 private:
-	ThreadManager()
-	: highest_thread_id{0}
-	, TCBs()
-	, running_thread_it() {
-		TCB* curr_tcb = new TCB(++highest_thread_id);
-		setjmp(curr_tcb->buf);
-		this->TCBs[curr_tcb->thread_id] = curr_tcb;
-		running_thread_it = this->TCBs.begin();
-		this->nextThread();
-	}
-
+	ThreadManager();
 	pthread_t highest_thread_id;
 	std::map<pthread_t, TCB*> TCBs;
 	std::map<pthread_t, TCB*>::iterator running_thread_it;

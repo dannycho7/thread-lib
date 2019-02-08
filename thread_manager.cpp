@@ -18,6 +18,22 @@ static int ptr_mangle(int p) {
     return ret;
 }
 
+ThreadManager::ThreadManager()
+: highest_thread_id{0}
+, TCBs()
+, running_thread_it() {
+	TCB* curr_tcb = new TCB(++highest_thread_id);
+	setjmp(curr_tcb->buf);
+	this->TCBs[curr_tcb->thread_id] = curr_tcb;
+	running_thread_it = this->TCBs.begin();
+}
+
+ThreadManager::~ThreadManager() {
+	for (auto it = this->TCBs.begin(); it != this->TCBs.end(); it++) {
+		delete it->second;
+	}
+}
+
 void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *)) {
 	*thread = ++(this->highest_thread_id);
 	TCB* crt_tcb = new TCB(*thread);
