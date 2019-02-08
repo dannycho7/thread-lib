@@ -55,6 +55,7 @@ ThreadManager::ThreadManager()
 	setjmp(curr_tcb->buf);
 	this->TCBs[curr_tcb->thread_id] = curr_tcb;
 	running_thread_it = this->TCBs.begin();
+	initTimer();
 }
 
 ThreadManager::~ThreadManager() {
