@@ -1,11 +1,5 @@
-/* Maybe we don't need these */
-#define JB_BX 0
-#define JB_SI 1
-#define JB_DI 2
-#define JB_BP 3
 #define JB_SP 4
 #define JB_PC 5
-/* Potentially remove */
 
 #include <cstdint>
 #include <stdlib.h>
@@ -40,8 +34,8 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	setjmp(crt_tcb->buf);
 
 	crt_tcb->stack_top[STACK_SIZE - 1] = (intptr_t) arg;
-	crt_tcb->stack_top[STACK_SIZE - 2] = (intptr_t) pthread_exit;
-
+	crt_tcb->stack_top[STACK_SIZE - 2] = (intptr_t) exit_addr;
+	
 	crt_tcb->buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(crt_tcb->stack_top + STACK_SIZE - 2));
 	crt_tcb->buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 
