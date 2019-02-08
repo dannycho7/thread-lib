@@ -91,10 +91,12 @@ TCB* ThreadManager::getRunningTCB() { return this->TCBs[this->running_thread_it-
 [[ noreturn ]] void ThreadManager::nextThread() {
 	if (this->TCBs.size() == 0)
 		exit(0);
-	else {
+	else if (this->TCBs.size() == 1) {
+		this->running_thread_it = this->TCBs.begin(); /* In case current thread got deleted */
+	} else {
 		if (this->running_thread_it == this->TCBs.end())
 			this->running_thread_it = this->TCBs.begin();
-		else if (this->TCBs.size() > 1)
+		else
 			this->running_thread_it++;
 	}
 	longjmp(this->running_thread_it->second->buf, 1);
