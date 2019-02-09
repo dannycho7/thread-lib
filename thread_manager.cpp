@@ -87,6 +87,8 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	TCB* fin_tcb = this->TCBs.find(curr_thread_id)->second;
 	delete fin_tcb;
 	this->running_thread_it = this->TCBs.erase(this->running_thread_it);
+	if (this->running_thread_it == this->TCBs.end())
+		this->running_thread_it = this->TCBs.begin();
 	if (this->TCBs.size() == 0)
 		exit(0);
 	longjmp(this->running_thread_it->second->buf, 1);
