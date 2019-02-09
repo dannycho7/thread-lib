@@ -4,10 +4,11 @@
 
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/time.h>
-#include "thread_manager.h"
+#include "thread_manager.hpp"
 
 static int ptr_mangle(int p) {
     unsigned int ret;
@@ -50,17 +51,17 @@ void initTimer() {
 
 ThreadManager::ThreadManager()
 : highest_thread_id{0}
-, TCBs()
+, mapTCB()
 , running_thread_it() {
 	TCB* curr_tcb = new TCB(highest_thread_id); /* main thread receives id 0 */
 	setjmp(curr_tcb->buf);
-	this->TCBs[curr_tcb->thread_id] = curr_tcb;
-	running_thread_it = this->TCBs.begin();
+	this->mapTCB[curr_tcb->thread_id] = curr_tcb;
+	running_thread_it = this->mapTCB.begin();
 	initTimer();
 }
 
 ThreadManager::~ThreadManager() {
-	for (auto it = this->TCBs.begin(); it != this->TCBs.end(); it++) {
+	for (auto it = this->mapTCB.begin(); it != this->mapTCB.end(); it++) {
 		delete it->second;
 	}
 }
@@ -79,29 +80,29 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	crt_tcb->buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(stack_ptr + STACK_SIZE - 2 * sizeof(int)));
 	crt_tcb->buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 
-	this->TCBs[crt_tcb->thread_id] = crt_tcb;
+	this->mapTCB[crt_tcb->thread_id] = crt_tcb;
 }
 
 [[ noreturn ]] void ThreadManager::finishCurrentThread() {
 	pthread_t curr_thread_id = this->running_thread_it->second->thread_id;
-	TCB* fin_tcb = this->TCBs.find(curr_thread_id)->second;
+	TCB* fin_tcb = this->mapTCB.find(curr_thread_id)->second;
 	delete fin_tcb;
-	this->running_thread_it = this->TCBs.erase(this->running_thread_it);
-	if (this->running_thread_it == this->TCBs.end())
-		this->running_thread_it = this->TCBs.begin();
-	if (this->TCBs.size() == 0)
+	this->running_thread_it = this->mapTCB.erase(this->running_thread_it);
+	if (this->running_thread_it == this->mapTCB.end())
+		this->running_thread_it = this->mapTCB.begin();
+	if (this->mapTCB.size() == 0)
 		exit(0);
 	longjmp(this->running_thread_it->second->buf, 1);
 }
 
-TCB* ThreadManager::getRunningTCB() { return this->TCBs[this->running_thread_it->second->thread_id]; }
+TCB* ThreadManager::getRunningTCB() { return this->mapTCB[this->running_thread_it->second->thread_id]; }
 
 /* Invariant is that the running_thread_it is an iterator to a valid value */
 [[ noreturn ]] void ThreadManager::nextThread() {
-	assert(this->TCBs.size() > 0);
+	assert(this->mapTCB.size() > 0);
 	this->running_thread_it++;
-	if (this->running_thread_it == this->TCBs.end())
-		this->running_thread_it = this->TCBs.begin();
+	if (this->running_thread_it == this->mapTCB.end())
+		this->running_thread_it = this->mapTCB.begin();
 	longjmp(this->running_thread_it->second->buf, 1);
 } 
 

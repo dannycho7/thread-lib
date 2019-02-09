@@ -34,7 +34,7 @@ public:
 private:
 	ThreadManager();
 	pthread_t highest_thread_id;
-	std::map<pthread_t, TCB*> TCBs;
+	std::map<pthread_t, TCB*> mapTCB;
 	std::map<pthread_t, TCB*>::iterator running_thread_it;
 };
 #endif

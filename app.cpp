@@ -1,5 +1,5 @@
 #include <iostream>
-#include "thread_manager.h"
+#include "thread_manager.hpp"
 
 int main() {
 	std::cout << "Before get" << std::endl;
