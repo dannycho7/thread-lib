@@ -52,7 +52,7 @@ ThreadManager::ThreadManager()
 : highest_thread_id{0}
 , TCBs()
 , running_thread_it() {
-	TCB* curr_tcb = new TCB(++highest_thread_id);
+	TCB* curr_tcb = new TCB(highest_thread_id); /* main thread receives id 0 */
 	setjmp(curr_tcb->buf);
 	this->TCBs[curr_tcb->thread_id] = curr_tcb;
 	running_thread_it = this->TCBs.begin();
