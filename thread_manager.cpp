@@ -71,10 +71,12 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 
 	setjmp(crt_tcb->buf);
 
-	crt_tcb->stack_top[STACK_SIZE - 1] = (intptr_t) arg;
-	crt_tcb->stack_top[STACK_SIZE - 2] = (intptr_t) exit_addr;
+	uint8_t* stack_ptr = ((uint8_t *) (crt_tcb->stack_top));
 
-	crt_tcb->buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(crt_tcb->stack_top + STACK_SIZE - 2));
+	*((int *) (stack_ptr + STACK_SIZE - 1 * sizeof(int))) = (intptr_t) arg;
+	*((int *) (stack_ptr + STACK_SIZE - 2 * sizeof(int))) = (intptr_t) exit_addr;
+
+	crt_tcb->buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(stack_ptr + STACK_SIZE - 2 * sizeof(int)));
 	crt_tcb->buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 
 	this->TCBs[crt_tcb->thread_id] = crt_tcb;
