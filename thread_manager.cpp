@@ -1,6 +1,7 @@
 #define INTERVAL 500
 #define JB_SP 4
 #define JB_PC 5
+#define MAIN_THREAD 0
 
 #include <cassert>
 #include <cstdint>
@@ -82,8 +83,7 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 }
 
 [[ noreturn ]] void ThreadManager::finishCurrentThread() {
-	TCB fin_tcb = this->tcb_arr[curr_thread_i];
-	free(fin_tcb.stack_top);
+	TCB fin_tcb = this->tcb_arr[this->curr_thread_i];
 	fin_tcb.state = TERMINATED;
 	this->nextThread();
 }
@@ -97,8 +97,13 @@ TCB& ThreadManager::getRunningTCB() { return this->tcb_arr[curr_thread_i]; }
 		if (this->tcb_arr[curr_thread_i].state == READY)
 			break;
 	}
-	if (i == this->num_threads)
+	if (i == this->num_threads) {
+		assert(this->curr_thread_i == MAIN_THREAD);
+		for (int i = 1; i < this->num_threads; i++) {
+			free(this->tcb_arr[i].stack_top);
+		}
 		exit(0);
+	}
 
 	this->tcb_arr[curr_thread_i].state = RUNNING;
 	longjmp(this->tcb_arr[curr_thread_i].buf, 1);
@@ -113,6 +118,6 @@ void pthread_exit(void* value_ptr) {
 }
 
 int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_attr, void *(*start_routine)(void*), void *restrict_arg) {
-	ThreadManager::get().createThread(restrict_thread, NULL, start_routine, restrict_arg, *pthread_exit);
+	ThreadManager::get().createThread(restrict_thread, NULL, start_routine, restrict_arg, pthread_exit);
 	return 0;
 }
