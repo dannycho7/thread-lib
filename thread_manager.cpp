@@ -33,6 +33,7 @@ void alarm_handler(int signo) {
 void initTimer() {
 	struct itimerval it_val;
 	struct sigaction act;
+	sigemptyset(&act.sa_mask);
 	act.sa_handler = alarm_handler;
 	act.sa_flags = SA_NODEFER;
 	if(sigaction(SIGALRM, &act, NULL) == -1) {
