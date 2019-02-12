@@ -3,7 +3,6 @@
 #define JB_PC 5
 #define MAIN_THREAD 0
 
-#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <stdlib.h>
@@ -41,11 +40,9 @@ void initTimer() {
 		perror("Unable to catch SIGALRM");
 		exit(1);
 	}
-
 	it_val.it_value.tv_sec = INTERVAL/1000;
 	it_val.it_value.tv_usec = (INTERVAL*1000) % 1000000;
 	it_val.it_interval = it_val.it_value;
-
 	if(setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
 		perror("error calling setitimer()");
 		exit(1);
@@ -68,12 +65,9 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	*thread = this->num_threads;
 	TCB crt_tcb(*thread);
 	setjmp(crt_tcb.buf);
-
 	uint8_t* stack_ptr = ((uint8_t *) (crt_tcb.stack_top));
-
 	*((int *) (stack_ptr + STACK_SIZE - 1 * sizeof(int))) = (intptr_t) arg;
 	*((int *) (stack_ptr + STACK_SIZE - 2 * sizeof(int))) = (intptr_t) exit_addr;
-
 	crt_tcb.buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(stack_ptr + STACK_SIZE - 2 * sizeof(int)));
 	crt_tcb.buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 	crt_tcb.state = READY;
@@ -98,13 +92,12 @@ TCB& ThreadManager::getRunningTCB() { return this->tcb_arr[curr_thread_i]; }
 			break;
 	}
 	if (i == this->num_threads) {
-		assert(this->curr_thread_i == MAIN_THREAD);
 		for (int i = 1; i < this->num_threads; i++) {
+			if (i == this->curr_thread_i) continue; // don't free current thread's stack
 			free(this->tcb_arr[i].stack_top);
 		}
 		exit(0);
 	}
-
 	this->tcb_arr[curr_thread_i].state = RUNNING;
 	longjmp(this->tcb_arr[curr_thread_i].buf, 1);
 } 
