@@ -31,7 +31,7 @@ public:
 		static ThreadManager tm;
 		return tm;
 	}
-	void createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *));
+	void createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)());
 	[[ noreturn ]] void finishCurrentThread(void* value_ptr);
 	TCB& getRunningTCB();
 	TCB& getTCBByThreadId(pthread_t thread_id);

@@ -77,7 +77,7 @@ ThreadManager::ThreadManager()
 	initTimer();
 }
 
-void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)(void *)) {
+void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, void* (*start_routine)(void *), void *arg, void (*exit_addr)()) {
 	*thread = this->num_threads;
 	TCB crt_tcb(*thread);
 	setjmp(crt_tcb.buf);
@@ -140,8 +140,14 @@ void pthread_exit(void* value_ptr) {
 	ThreadManager::get().finishCurrentThread(value_ptr);
 }
 
+void pthread_exit_wrapper() {
+	unsigned int res;
+	asm("movl %%eax, %0\n":"=r"(res));
+	pthread_exit((void *) res);
+}
+
 int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_attr, void *(*start_routine)(void*), void *restrict_arg) {
-	ThreadManager::get().createThread(restrict_thread, NULL, start_routine, restrict_arg, pthread_exit);
+	ThreadManager::get().createThread(restrict_thread, NULL, start_routine, restrict_arg, pthread_exit_wrapper);
 	return 0;
 }
 
