@@ -6,6 +6,7 @@
 #include <map>
 #include <pthread.h>
 #include <setjmp.h>
+#include <list>
 
 enum TCB_STATE { RUNNING, READY, TERMINATED, BLOCKED };
 
@@ -23,6 +24,14 @@ struct TCB {
 		this->stack_top = stack;
 		this->waiting_thread = NULL;
 	}
+};
+
+struct __sem_t {
+	unsigned value;
+	bool is_initialized;
+	std::list<TCB*> waiting_threads;
+	__sem_t() {}
+	__sem_t(unsigned value) : value(value), is_initialized(true) {}
 };
 
 class ThreadManager {

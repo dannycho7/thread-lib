@@ -82,8 +82,8 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	TCB crt_tcb(*thread);
 	setjmp(crt_tcb.buf);
 	uint8_t* stack_ptr = ((uint8_t *) (crt_tcb.stack_top));
-	*((int *) (stack_ptr + STACK_SIZE - 1 * sizeof(int))) = (intptr_t) arg;
-	*((int *) (stack_ptr + STACK_SIZE - 2 * sizeof(int))) = (intptr_t) exit_addr;
+	*((int *) (stack_ptr + STACK_SIZE - 1 * sizeof(int))) = (int) arg;
+	*((int *) (stack_ptr + STACK_SIZE - 2 * sizeof(int))) = (int) exit_addr;
 	crt_tcb.buf->__jmpbuf[JB_SP] = ptr_mangle((intptr_t)(stack_ptr + STACK_SIZE - 2 * sizeof(int)));
 	crt_tcb.buf->__jmpbuf[JB_PC] = ptr_mangle((intptr_t)(start_routine));
 	crt_tcb.state = READY;
@@ -157,13 +157,53 @@ int pthread_join(pthread_t thread, void **value_ptr) {
 	if (thread_data.state == TERMINATED) {
 		unlock();
 	} else {
-		ThreadManager::get().getRunningTCB().state = BLOCKED;
 		thread_data.waiting_thread = &(ThreadManager::get().getRunningTCB());
+		ThreadManager::get().getRunningTCB().state = BLOCKED;
 		unlock();
 		if (setjmp(ThreadManager::get().getRunningTCB().buf) == 0)
 			ThreadManager::get().nextThread();
 	}
 	*value_ptr = thread_data.return_val;
 
+	return 0;
+}
+
+int sem_init(sem_t *sem, int pshared, unsigned value) {
+	__sem_t* add_info = new __sem_t(value);
+	sem->__align = (long int) add_info;
+	return 0;
+}
+
+int sem_destroy(sem_t *sem) {
+	delete ((__sem_t *) sem->__align);
+	return 0;
+}
+int sem_wait(sem_t *sem) {
+	lock();
+	__sem_t* add_info = ((__sem_t *) sem->__align);
+	if (add_info->value == 0) {
+		add_info->waiting_threads.push_back(&ThreadManager::get().getRunningTCB());
+		ThreadManager::get().getRunningTCB().state = BLOCKED;
+		unlock();
+		if (setjmp(ThreadManager::get().getRunningTCB().buf) == 0)
+			ThreadManager::get().nextThread();
+	} else {
+		add_info->value--;
+		unlock();
+	}
+	return 0;
+}
+int sem_post(sem_t *sem) {
+	lock();
+	__sem_t* add_info = ((__sem_t *) sem->__align);
+	if (add_info->value == 0 && add_info->waiting_threads.size() > 0) {
+		TCB* next_owner = add_info->waiting_threads.front();
+		add_info->waiting_threads.pop_front();
+		next_owner->state = READY;
+		unlock();
+	} else {
+		add_info->value++;
+		unlock();
+	}
 	return 0;
 }
