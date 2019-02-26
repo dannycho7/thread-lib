@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <semaphore.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/time.h>
@@ -114,3 +115,19 @@ int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_at
 	ThreadManager::get().createThread(restrict_thread, NULL, start_routine, restrict_arg, pthread_exit);
 	return 0;
 }
+
+void _modALRM(int how) {
+	sigset_t alrm_set;
+	sigemptyset(&alrm_set);
+	sigaddset(&alrm_set, SIGALRM);
+	sigprocmask(how, &alrm_set, NULL);
+}
+
+void lock() {
+	_modALRM(SIG_BLOCK);
+}
+
+void unlock() {
+	_modALRM(SIG_UNBLOCK);
+}
+

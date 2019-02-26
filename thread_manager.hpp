@@ -14,7 +14,7 @@ struct TCB {
 	int* stack_top;
 	jmp_buf buf;
 	TCB_STATE state;
-	TCB() {} /* try to remove?? */
+	TCB() {}
 	TCB(pthread_t thread_id) {
 		this->thread_id = thread_id;
 		int* stack = (int *) malloc(STACK_SIZE);
