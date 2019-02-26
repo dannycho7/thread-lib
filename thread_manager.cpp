@@ -24,6 +24,21 @@ static int ptr_mangle(int p) {
     return ret;
 }
 
+static void _modALRM(int how) {
+	sigset_t alrm_set;
+	sigemptyset(&alrm_set);
+	sigaddset(&alrm_set, SIGALRM);
+	sigprocmask(how, &alrm_set, NULL);
+}
+
+void lock() {
+	_modALRM(SIG_BLOCK);
+}
+
+void unlock() {
+	_modALRM(SIG_UNBLOCK);
+}
+
 void alarm_handler(int signo) {
 	if (setjmp(ThreadManager::get().getRunningTCB().buf) == 0) {
 		ThreadManager::get().getRunningTCB().state = READY;
@@ -77,13 +92,27 @@ void ThreadManager::createThread(pthread_t* thread, const pthread_attr_t* attr, 
 	num_threads++;
 }
 
-[[ noreturn ]] void ThreadManager::finishCurrentThread() {
-	TCB fin_tcb = this->tcb_arr[this->curr_thread_i];
+[[ noreturn ]] void ThreadManager::finishCurrentThread(void* value_ptr) {
+	lock();
+	TCB& fin_tcb = this->tcb_arr[this->curr_thread_i];
+	fin_tcb.return_val = value_ptr;
+	if (fin_tcb.waiting_thread != NULL) {
+		fin_tcb.waiting_thread->state = READY;
+	}
 	fin_tcb.state = TERMINATED;
+	unlock();
 	this->nextThread();
 }
 
 TCB& ThreadManager::getRunningTCB() { return this->tcb_arr[curr_thread_i]; }
+TCB& ThreadManager::getTCBByThreadId(pthread_t thread_id) {
+	for (int i = 0; i < this->num_threads; i++) {
+		if (this->tcb_arr[i].thread_id == thread_id) {
+			return this->tcb_arr[i];
+		}
+	}
+	throw std::runtime_error("Invalid thread.");
+}
 
 [[ noreturn ]] void ThreadManager::nextThread() {
 	int i;
@@ -108,7 +137,7 @@ pthread_t pthread_self() {
 }
 
 void pthread_exit(void* value_ptr) {
-	ThreadManager::get().finishCurrentThread();
+	ThreadManager::get().finishCurrentThread(value_ptr);
 }
 
 int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_attr, void *(*start_routine)(void*), void *restrict_arg) {
@@ -116,18 +145,19 @@ int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_at
 	return 0;
 }
 
-void _modALRM(int how) {
-	sigset_t alrm_set;
-	sigemptyset(&alrm_set);
-	sigaddset(&alrm_set, SIGALRM);
-	sigprocmask(how, &alrm_set, NULL);
-}
+int pthread_join(pthread_t thread, void **value_ptr) {
+	lock();
+	TCB& thread_data = ThreadManager::get().getTCBByThreadId(thread);
+	if (thread_data.state == TERMINATED) {
+		unlock();
+	} else {
+		ThreadManager::get().getRunningTCB().state = BLOCKED;
+		thread_data.waiting_thread = &(ThreadManager::get().getRunningTCB());
+		unlock();
+		if (setjmp(ThreadManager::get().getRunningTCB().buf) == 0)
+			ThreadManager::get().nextThread();
+	}
+	*value_ptr = thread_data.return_val;
 
-void lock() {
-	_modALRM(SIG_BLOCK);
+	return 0;
 }
-
-void unlock() {
-	_modALRM(SIG_UNBLOCK);
-}
-
